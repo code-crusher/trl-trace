@@ -16,7 +16,7 @@ import time
 
 from accelerate.logging import get_logger
 
-from ...import_utils import is_requests_available
+from ..import_utils import is_requests_available
 
 
 if is_requests_available():
@@ -66,7 +66,7 @@ class VLLMClient:
                 raise TimeoutError(
                     f"Timed out after {self.timeout:.0f}s waiting for vLLM server at {self.server_url}. "
                     "Make sure the vLLM server is running and reachable. If the server needs more time to load "
-                    "the model, increase `vllm_server_timeout` in your AsyncGRPOConfig."
+                    "the model, increase `vllm_server_timeout` in your AsyncGRPOConfig or AsyncDistillationConfig."
                 )
             if int(elapsed) % 10 < poll_interval_s:
                 logger.info(f"Still waiting for vLLM server... ({elapsed:.0f}s)")

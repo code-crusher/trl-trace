@@ -46,8 +46,9 @@ from openenv.core.harness import (
     VerifyResult,
 )
 
-from trl.experimental.async_grpo import AsyncGRPOConfig, async_rollout_worker, openenv_harness
-from trl.experimental.async_grpo.async_rollout_worker import Rollout, TurnRecord, _chain_to_sequences, _SampleBuilder
+from trl.experimental.async_grpo import AsyncGRPOConfig, openenv_harness
+from trl.experimental.async_grpo import async_grpo_trainer as async_rollout_worker
+from trl.experimental.async_grpo.async_grpo_trainer import Rollout, TurnRecord, _chain_to_sequences, _SampleBuilder
 
 from ..testing_utils import is_ampere_or_newer, require_vllm
 

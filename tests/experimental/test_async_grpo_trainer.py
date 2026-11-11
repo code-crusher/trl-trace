@@ -45,31 +45,30 @@ pytest.importorskip("transformers", minversion="5.2.0")
 
 from trl.experimental.async_grpo import AsyncGRPOConfig, AsyncGRPOTrainer
 from trl.experimental.async_grpo import async_grpo_trainer as async_grpo_trainer_module
-from trl.experimental.async_grpo import weight_transfer as weight_transfer_module
 from trl.experimental.async_grpo.async_grpo_trainer import (
+    TREE_ATTENTION,
+    AsyncRolloutLoop,
+    AsyncRolloutWorker,
     DataCollatorForRollout,
+    Rollout,
+    RolloutGroup,
+    RolloutSample,
     TokenBudgetBatcher,
+    TrainingSequence,
+    TreeRow,
+    TurnRecord,
+    _chain_to_sequences,
+    _common_prefix_len,
     _iter_vllm_named_params,
     _reduce_metric,
+    _spawn_stop_watcher,
     round_lora_rank,
     save_lora_adapter,
     select_adapter_sync,
     validate_lora_for_vllm_sync,
 )
-from trl.experimental.async_grpo.async_rollout_worker import (
-    AsyncRolloutLoop,
-    AsyncRolloutWorker,
-    Rollout,
-    RolloutGroup,
-    RolloutSample,
-    TrainingSequence,
-    TurnRecord,
-    _chain_to_sequences,
-    _common_prefix_len,
-    _spawn_stop_watcher,
-)
-from trl.experimental.async_grpo.packing import TREE_ATTENTION, TreeRow
-from trl.experimental.async_grpo.weight_transfer import WeightTransferClient
+from trl.generation import weight_transfer as weight_transfer_module
+from trl.generation.weight_transfer import WeightTransferClient
 from trl.trainer.base_trainer import _BaseTrainer
 
 from ..testing_utils import (

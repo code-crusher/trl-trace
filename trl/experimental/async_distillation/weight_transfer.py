@@ -43,7 +43,7 @@ logger = get_logger(__name__)
 class WeightTransferClient:
     """Streams the student's weights to its own vLLM server over NCCL.
 
-    Ported verbatim from [`~trl.experimental.async_grpo.weight_transfer.WeightTransferClient`]. Only the student is
+    Ported verbatim from [`~trl.generation.weight_transfer.WeightTransferClient`]. Only the student is
     ever targeted: the teacher is static and never receives a weight update, so no analogous client exists for it.
 
     Each transfer runs its NCCL side on a daemon thread while the HTTP request that drives the server stays on the main

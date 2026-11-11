@@ -20,8 +20,8 @@ from collections import Counter
 import torch
 from accelerate.logging import get_logger
 
-from ...import_utils import is_vllm_available
-from .vllm_client import VLLMClient
+from ..import_utils import is_vllm_available
+from .async_vllm_client import VLLMClient
 
 
 if is_vllm_available():
@@ -84,7 +84,7 @@ class WeightTransferClient:
         if vllm_dtype != train_dtype:
             logger.warning(
                 f"The vLLM server serves in {vllm_dtype} but the trainer computes in {train_dtype}. Set `dtype` (or "
-                f"`bf16`/`fp16`) in `AsyncGRPOConfig` to match, or start the server with `--dtype {train_dtype}`."
+                f"`bf16`/`fp16`) in the trainer's config to match, or start the server with `--dtype {train_dtype}`."
             )
         inference_world_size = self.vllm.get_world_size()
         world_size = inference_world_size + 1

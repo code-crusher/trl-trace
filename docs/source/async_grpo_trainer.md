@@ -527,9 +527,9 @@ MFU is reported only when peak compute capacity is known for the local training 
 
 ## TurnRecord
 
-[[autodoc]] trl.experimental.async_grpo.async_rollout_worker.TurnRecord
+[[autodoc]] trl.experimental.async_grpo.async_grpo_trainer.TurnRecord
 
 ## RolloutGroup
 
-[[autodoc]] trl.experimental.async_grpo.async_rollout_worker.RolloutGroup
+[[autodoc]] trl.experimental.async_grpo.async_grpo_trainer.RolloutGroup
 
