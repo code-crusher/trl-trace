@@ -36,6 +36,7 @@ from transformers.utils import is_peft_available
 
 from trl import GRPOConfig, GRPOTrainer
 from trl.chat_template_utils import _SUPPORTS_RESPONSE_TEMPLATE
+from trl.generation.vllm_client import VLLMClient
 from trl.import_utils import is_vllm_available
 
 from .testing_utils import (
@@ -2402,6 +2403,37 @@ class TestGRPOTrainer(TrlTestCase):
     def test_vllm_top_p_and_min_p_require_top_k(self, sampling_kwargs):
         with pytest.raises(ValueError, match="top_k"):
             GRPOConfig(output_dir=self.tmp_dir, use_vllm=True, report_to="none", **sampling_kwargs)
+
+    @require_vllm
+    @pytest.mark.parametrize("server_returns_sampling_mask", [False, True])
+    def test_vllm_server_sampling_mask(self, server_returns_sampling_mask, caplog):
+        # In server mode, the trainer only gets the candidate sets if the server was started with
+        # `--return-sampling-mask`; otherwise, the importance ratio is biased.
+        dataset = load_dataset("trl-internal-testing/zen", "standard_prompt_only", split="train")
+        training_args = GRPOConfig(
+            output_dir=self.tmp_dir,
+            report_to="none",
+            use_vllm=True,
+            vllm_mode="server",
+            top_k=10,
+        )
+        model_config = {"logprobs_mode": "processed_logprobs", "return_sampling_mask": server_returns_sampling_mask}
+        with (  # stand in for the vLLM server
+            patch.object(VLLMClient, "check_server"),
+            patch.object(VLLMClient, "_get", return_value={"data": [{"id": "Qwen/Qwen2.5-0.5B-Instruct"}]}),
+            patch.object(VLLMClient, "init_communicator"),
+            patch.object(VLLMClient, "get_server_info", return_value={"model_config": model_config}),
+        ):
+            with caplog.at_level("WARNING", logger="trl.trainer.grpo_trainer"):
+                trainer = GRPOTrainer(
+                    model="trl-internal-testing/tiny-Qwen2ForCausalLM-2.5",
+                    reward_funcs="trl-internal-testing/tiny-Qwen2ForSequenceClassification-2.5",
+                    args=training_args,
+                    train_dataset=dataset,
+                )
+
+        assert trainer.vllm_generation.return_sampling_mask == server_returns_sampling_mask
+        assert ("--return-sampling-mask" in caplog.text) == (not server_returns_sampling_mask)
 
     def test_vllm_repetition_penalty_requires_no_importance_sampling_correction(self):
         with pytest.raises(ValueError, match="repetition_penalty"):

@@ -628,7 +628,7 @@ training_args = AsyncGRPOConfig(
 )
 ```
 
-It is also supported in the [`GRPOTrainer`] with vLLM in colocate mode (>= 0.28): with `top_k > 0` and the importance sampling correction enabled (the default), vLLM returns each token's support and the trainer renormalizes over it:
+It is also supported in the [`GRPOTrainer`] with vLLM (>= 0.28, and in server mode started with `--return-sampling-mask`): with `top_k > 0` and the importance sampling correction enabled (the default), vLLM returns each token's support and the trainer renormalizes over it:
 
 ```python
 from trl import GRPOConfig

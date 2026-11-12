@@ -156,6 +156,45 @@ class TestMissingServerSettings(TrlTestCase):
                 client.image_features([[Image.new("RGB", (8, 8))]])
 
 
+@require_requests
+class TestGenerateSamplingMask(TrlTestCase):
+    def make_client(self):
+        with (
+            patch("trl.generation.vllm_client.is_vllm_available", return_value=True),
+            patch.object(VLLMClient, "check_server"),
+            patch.object(VLLMClient, "_get", return_value={"data": [{"id": "test-model"}]}),
+        ):
+            return VLLMClient(host="127.0.0.1")
+
+    @staticmethod
+    def make_response(body):
+        response = requests.Response()
+        response.status_code = 200
+        response._content = json.dumps(body).encode()
+        return response
+
+    def test_sampling_mask_returned(self):
+        client = self.make_client()
+        body = {"choices": [{"token_ids": [7, 8], "logprobs": None, "sampling_mask": [[7, 3], [8, 4]]}]}
+        with patch.object(client.session, "post", return_value=self.make_response(body)) as post:
+            outputs = client.generate([[1, 2]], top_k=10, return_sampling_mask=True)
+
+        assert outputs["completion_ids"] == [[7, 8]]
+        assert outputs["sampling_mask"] == [[[7, 3], [8, 4]]]
+        # Only `/inference/v1/generate` returns the candidate set of each token
+        assert post.call_args.args[0] == f"{client.base_url}/inference/v1/generate"
+
+    def test_no_sampling_mask_without_flag(self):
+        client = self.make_client()
+        body = {"choices": [{"prompt_token_ids": [1, 2], "token_ids": [7, 8], "logprobs": None}]}
+        with patch.object(client.session, "post", return_value=self.make_response(body)) as post:
+            outputs = client.generate([[1, 2]])
+
+        assert outputs["completion_ids"] == [[7, 8]]
+        assert "sampling_mask" not in outputs
+        assert post.call_args.args[0] == f"{client.base_url}/v1/completions"
+
+
 class TestParseLogprobs(TrlTestCase):
     def test_completion_logprobs_sorted_by_probability(self):
         logprobs = {
@@ -510,6 +549,43 @@ class TestVLLMClientServer(TrlTestCase):
 
         # vLLM x pytest (or Popen) seems not to handle process termination well. To avoid zombie processes, we need to
         # kill the server process and its children explicitly.
+        kill_process(cls.server_process)
+
+
+@require_torch_multi_accelerator
+@pytest.mark.skipif(
+    not is_vllm_available(min_version="0.30.0"),
+    reason="`/inference/v1/generate`, which returns the candidate sets, needs `--enable-scale-out` (vLLM >= 0.30)",
+)
+@pytest.mark.xdist_group("vllm_server")
+class TestVLLMClientServerSamplingMask(TrlTestCase):
+    model_id = "Qwen/Qwen2.5-1.5B"
+
+    @classmethod
+    def setup_class(cls):
+        env = os.environ.copy()
+        VISIBLE_DEVICES = "ZE_AFFINITY_MASK" if torch_device == "xpu" else "CUDA_VISIBLE_DEVICES"
+        env[VISIBLE_DEVICES] = "1"  # Restrict to accelerator 1
+        env["VLLM_SERVER_DEV_MODE"] = "1"
+        cls.server_process = subprocess.Popen(
+            ["vllm", "serve", cls.model_id, *VLLM_SERVE_TRL_ARGS, "--return-sampling-mask"], env=env
+        )
+        cls.client = VLLMClient(connection_timeout=240, host="localhost")
+
+    def test_generate_with_sampling_mask(self):
+        tokenizer = AutoTokenizer.from_pretrained(self.model_id)
+        prompt_token_ids = tokenizer(["Hello, AI!", "Tell me a joke"])["input_ids"]
+        outputs = self.client.generate(prompt_token_ids, n=2, top_k=10, max_tokens=8, return_sampling_mask=True)
+
+        assert len(outputs["sampling_mask"]) == len(outputs["completion_ids"]) == 4
+        for completion_ids, sampling_mask in zip(outputs["completion_ids"], outputs["sampling_mask"], strict=True):
+            assert len(sampling_mask) == len(completion_ids)
+            for token_id, candidates in zip(completion_ids, sampling_mask, strict=True):
+                assert token_id in candidates
+                assert len(candidates) <= 10
+
+    @classmethod
+    def teardown_class(cls):
         kill_process(cls.server_process)
 
 

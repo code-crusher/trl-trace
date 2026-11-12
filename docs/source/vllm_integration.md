@@ -134,7 +134,8 @@ Only the following are required by TRL:
 | `--weight-transfer-config '{"backend": "nccl"}'` | Enables the NCCL weight-transfer engine. Use `"ipc"` instead when the trainer and the server share a GPU. |
 | `--logprobs-mode processed_logprobs` | Returns logprobs after temperature scaling and logit processing, which is what the importance sampling correction expects. |
 | `--max-logprobs -1` | Lifts the OpenAI-compatible cap of 20 logprobs per token, required to request the top-k teacher distribution for distillation. |
-| `--enable-scale-out` | vLLM 0.30.0 and later, for multimodal prompts only: registers `/v1/chat/completions/render` and `/inference/v1/generate`, which the trainer uses to process images. Earlier versions reject the flag. |
+| `--enable-scale-out` | vLLM 0.30.0 and later, needed for multimodal prompts and `--return-sampling-mask`: registers `/v1/chat/completions/render` and `/inference/v1/generate`, which the trainer uses to process images and to get the candidate sets. Earlier versions reject the flag. |
+| `--return-sampling-mask` | vLLM 0.28.0 and later, for `GRPOTrainer` with `top_p < 1`, `top_k > 0` or `min_p > 0`: makes the server return the candidate set each token was sampled from, so the trainer can normalize its log-probabilities over the same set. From vLLM 0.30.0 it also needs `--enable-scale-out`, and the server then rejects requests with `top_k=0`. |
 
 > [!WARNING]
 > `trl vllm-serve` is deprecated: it now only builds this command and runs vLLM's server. It prints the exact `vllm serve` command it runs, so you can copy it and drop the wrapper.
